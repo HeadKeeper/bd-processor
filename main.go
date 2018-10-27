@@ -2,18 +2,17 @@ package main
 
 import (
 	"./stackoverflow"
-	"./github"
-	"sync"
 	"log"
+	"sync"
 )
 
-const _WAIT_GROUP_SIZE = 2
+const _WAIT_GROUP_SIZE = 1
 
 func main() {
 	log.Println("Starting data fetching...")
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(_WAIT_GROUP_SIZE)
 	go stackoverflow.StartFetching(&waitGroup)
-	go github.StartFetching(&waitGroup)
+	//go github.StartFetching(&waitGroup)
 	waitGroup.Wait()
 }

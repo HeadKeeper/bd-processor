@@ -1,6 +1,9 @@
 package db
 
-import "errors"
+import (
+	"errors"
+	"gopkg.in/mgo.v2/bson"
+)
 
 /*
 	Defined connection types:
@@ -11,6 +14,10 @@ const MONGO = "mongo"
 
 type DbConnection interface {
 	connectToDb(url, username, password string) (DbConnection, error)
+	AddRecord(target string, record interface{}) error
+	ReplaceRecord(target string, record interface{}, id bson.ObjectId) error
+	DeleteRecord(target string, id bson.ObjectId) error
+	Close()
 }
 
 func GetConnection(connectionType, url, username, password string) (DbConnection, error) {
