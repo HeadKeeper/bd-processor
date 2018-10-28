@@ -2,6 +2,7 @@ package stackoverflow
 
 import (
 	"../db"
+	"../util"
 	"log"
 	"sync"
 )
@@ -37,7 +38,59 @@ func StartFetching(wg *sync.WaitGroup) {
 	waitGroup = wg
 	connectToDb()
 	defer connection.Close()
-	batch := `{
+	fetchQuestions()
+	waitGroup.Done()
+}
+
+func connectToDb() {
+	var err error
+	log.Printf("Connecting to '%s'", _DB)
+	connection, err = db.GetConnection(_DB, _MONGO_URL, "", "")
+	if err != nil {
+		log.Fatalf("Can't create connection to '%s' on address %s. Cause: %s", _DB, _MONGO_URL, err)
+		waitGroup.Done()
+	}
+	log.Printf("Connection to '%s' was completly!", _DB)
+}
+
+func fetchQuestions() {
+	pattern := util.JoinURL(
+		_SO_API_SITE,
+		_SO_API_VERSION,
+		_SO_DATA_TYPE_QUESTIONS,
+		_SO_QUERY_PATTERN,
+	)
+
+}
+
+// ----------------
+//var tags []string
+//tags = append(tags, "aaa", "bbb", "ccc")
+//a := db.Question{
+//	Id: bson.NewObjectId(),
+//	Tags: tags,
+//	IsAnswered: true,
+//	ViewCount: 1,
+//	AcceptedAnswerId: 123,
+//	AnswerCount: 500,
+//	Score: 333,
+//	LastActivityDate: 1540644304,
+//	CreationDate: 1496221604,
+//	LastEditDate: 1496221605,
+//	QuestionId: 300,
+//	Link: "test link",
+//	Title: "Title",
+//
+//}
+//err := connection.AddRecord(_SO_DATA_TYPE_QUESTIONS, a)
+//if (err != nil) {
+//	log.Fatal(err)
+//	waitGroup.Done()
+//}
+// ----------
+
+/*
+batch := `{
 	"items": [
 	{
 	"tags": [
@@ -98,53 +151,15 @@ func StartFetching(wg *sync.WaitGroup) {
 	}
 	]}`
 	data := &db.QuestionBatch{
-		Items: []db.Question
+		Items: []db.Question{},
 	}
-	// ----------------
-	//var tags []string
-	//tags = append(tags, "aaa", "bbb", "ccc")
-	//a := db.Question{
-	//	Id: bson.NewObjectId(),
-	//	Tags: tags,
-	//	IsAnswered: true,
-	//	ViewCount: 1,
-	//	AcceptedAnswerId: 123,
-	//	AnswerCount: 500,
-	//	Score: 333,
-	//	LastActivityDate: 1540644304,
-	//	CreationDate: 1496221604,
-	//	LastEditDate: 1496221605,
-	//	QuestionId: 300,
-	//	Link: "test link",
-	//	Title: "Title",
-	//
-	//}
-	//err := connection.AddRecord(_SO_DATA_TYPE_QUESTIONS, a)
-	//if (err != nil) {
-	//	log.Fatal(err)
-	//	waitGroup.Done()
-	//}
-	// ----------
-	waitGroup.Done()
-}
-
-func connectToDb() {
-	var err error
-	log.Printf("Connecting to '%s'", _DB)
-	connection, err = db.GetConnection(_DB, _MONGO_URL, "", "")
-	if (err != nil) {
-		log.Fatalf("Can't create connection to '%s' on address %s. Cause: %s", _DB, _MONGO_URL, err)
-		waitGroup.Done()
+	json.Unmarshal([]byte(batch), &data)
+	for _, question := range data.Items {
+		question.Id = bson.NewObjectId()
+		err := connection.AddRecord(_SO_DATA_TYPE_QUESTIONS, question)
+		if (err != nil) {
+			log.Fatalf("Error on Mongo AddRecord. Cause: %s", err)
+			waitGroup.Done()
+		}
 	}
-	log.Printf("Connection to '%s' was completly!", _DB)
-}
-
-func fetchQuestions() {
-	//pattern := util.JoinURL(
-	//		_SO_API_SITE,
-	//		_SO_API_VERSION,
-	//		_SO_DATA_TYPE_QUESTIONS,
-	//		_SO_QUERY_PATTERN,
-	//		)
-
-}
+*/
