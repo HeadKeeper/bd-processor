@@ -3,7 +3,10 @@ package stackoverflow
 import (
 	"../db"
 	"../util"
+	"encoding/json"
+	"fmt"
 	"log"
+	"net/http"
 	"sync"
 )
 
@@ -17,7 +20,7 @@ const _SO_DATA_TYPE_QUESTIONS = "question"
 // PAGE (int),
 // PAGESIZE (int, Can't be bigger than 100),
 // FROMDATE (long),
-// TODATA (long),
+// TODATE (long),
 // TAGGED (string),
 // SITE (string)
 const _SO_QUERY_PATTERN = "page=%d&pagesize=%d&fromdate=%d&todate=%d&order=desc&sort=activity&tagged=%s&site=%s"
@@ -25,8 +28,12 @@ const _SO_QUERY_PATTERN = "page=%d&pagesize=%d&fromdate=%d&todate=%d&order=desc&
 //const _STACKOVERFLOW_API_PATTERN = "https://api.stackexchange.com/2.2/questions?page=1&pagesize=100&fromdate=1199145600&todate=1540512000&order=desc&sort=activity&tagged=java&site=stackoverflow"
 
 const _PAGE_SIZE = 100
+const _PAGES_COUNT = 100
+const _FROM_DATE = 1220227200
 const _START_PAGE = 1
+
 const _SITE = "stackoverflow"
+const _JAVA_TAG = "java"
 
 const _DB = "mongo"
 const _MONGO_URL = "localhost:27017"
@@ -60,7 +67,46 @@ func fetchQuestions() {
 		_SO_DATA_TYPE_QUESTIONS,
 		_SO_QUERY_PATTERN,
 	)
+	for currentPage := _START_PAGE; currentPage < _PAGES_COUNT; currentPage++ {
+		apiUrl := getNextApiURL(pattern, currentPage)
+		err := processUrl(apiUrl)
+		if err != nil {
+			log.Printf("Skipped %s. Cause: %s", apiUrl, err)
+		}
+	}
+}
 
+func processUrl(apiUrl string) error {
+	response, err := http.Get(apiUrl)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	var body []byte
+	response.Body.Read(body)
+	return processQuestionBatch(body)
+}
+
+func processQuestionBatch(body []byte) error {
+	data := &db.QuestionBatch{
+		Items: []db.Question{},
+	}
+	json.Unmarshal([]byte(body), &data)
+	for _, question := range data.Items {
+		question.Id = bson.NewObjectId()
+		err := connection.AddRecord(_SO_DATA_TYPE_QUESTIONS, question)
+		if err != nil {
+			log.Fatalf("Error on Mongo AddRecord. Cause: %s", err)
+			waitGroup.Done()
+		}
+	}
+	return nil
+}
+
+func getNextApiURL(pattern string, currentPage int) string {
+	currentTimeMillis := util.GetCurrentTimeInMillis()
+	tags := util.ConcatTags(_JAVA_TAG)
+	return fmt.Sprintf(pattern, currentPage, _PAGE_SIZE, _FROM_DATE, currentTimeMillis, tags)
 }
 
 // ----------------
