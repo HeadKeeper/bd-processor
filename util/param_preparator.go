@@ -2,14 +2,16 @@ package util
 
 import (
 	"strings"
-	"time"
 )
 
 const _URL_SLASH_CONCATENATOR = "/"
 const _TAG_CONCATENATOR = ";"
 
 func JoinURL(parts ...string) string {
-	return strings.Join(parts, _URL_SLASH_CONCATENATOR)
+	len := len(parts)
+	firstPart := strings.Join(parts[0:len-1], _URL_SLASH_CONCATENATOR)
+	urlParts := []string{firstPart, parts[len-1]}
+	return strings.Join(urlParts, "?")
 }
 
 func ConcatTags(tags ...string) string {
@@ -17,7 +19,7 @@ func ConcatTags(tags ...string) string {
 }
 
 func GetCurrentTimeInMillis() int64 {
-	return time.Now().UnixNano() / 1000000
+	return 1540944000
 }
 
 func ParseStackOverflowPattern() (string, error) {

@@ -4,17 +4,26 @@ import (
 	"../db"
 	"../util"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"gopkg.in/mgo.v2/bson"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 )
 
 // Full URL will contains SITE / API_VERSION / DATA_TYPE ? QUERY
 
-const _SO_API_SITE = "https://api.stackexchange.com"
-const _SO_API_VERSION = "2.2"
-const _SO_DATA_TYPE_QUESTIONS = "question"
+// Parts of URL
+const (
+	_SO_API_SITE            = "https://api.stackexchange.com"
+	_SO_API_VERSION         = "2.2"
+	_SO_DATA_TYPE_QUESTIONS = "questions"
+	_SO_QUERY_PATTERN       = "key=%s&page=%d&pagesize=%d&fromdate=%d&todate=%d&order=desc&sort=activity&tagged=%s&site=%s"
+)
 
 // PATTERN PARAMETERS:
 // PAGE (int),
@@ -23,20 +32,33 @@ const _SO_DATA_TYPE_QUESTIONS = "question"
 // TODATE (long),
 // TAGGED (string),
 // SITE (string)
-const _SO_QUERY_PATTERN = "page=%d&pagesize=%d&fromdate=%d&todate=%d&order=desc&sort=activity&tagged=%s&site=%s"
 
-//const _STACKOVERFLOW_API_PATTERN = "https://api.stackexchange.com/2.2/questions?page=1&pagesize=100&fromdate=1199145600&todate=1540512000&order=desc&sort=activity&tagged=java&site=stackoverflow"
+// Network
+const (
+	_STATUS_OK         = "200"
+	_DB                = "mongo"
+	_MONGO_URL         = "localhost:27017"
+	_STACKOVERFLOW_KEY = "tAPXnERpI2HiPYtx)BKGvQ(("
+)
 
-const _PAGE_SIZE = 100
-const _PAGES_COUNT = 100
-const _FROM_DATE = 1220227200
-const _START_PAGE = 1
+// Parameters
+const (
+	_PAGE_SIZE   = 100
+	_PAGES_COUNT = 14756
+	_FROM_DATE   = 1220227200
+	_START_PAGE  = 10501
+	_SITE        = "stackoverflow"
+	_JAVA_TAG    = "java"
+	_C_SHARP_TAG = "c#"
+	_RUBY_TAG    = "ruby"
+	_C_PLUS_TAG  = "c++"
+)
 
-const _SITE = "stackoverflow"
-const _JAVA_TAG = "java"
-
-const _DB = "mongo"
-const _MONGO_URL = "localhost:27017"
+// Util
+const (
+	_PROCESSING_GROUP_SIZE = 1
+	_TAG_CONCATENATOR      = ";"
+)
 
 var waitGroup *sync.WaitGroup
 var connection db.DbConnection
@@ -67,34 +89,50 @@ func fetchQuestions() {
 		_SO_DATA_TYPE_QUESTIONS,
 		_SO_QUERY_PATTERN,
 	)
-	for currentPage := _START_PAGE; currentPage < _PAGES_COUNT; currentPage++ {
-		apiUrl := getNextApiURL(pattern, currentPage)
-		err := processUrl(apiUrl)
+	var processingGroup sync.WaitGroup
+	processingGroup.Add(_PROCESSING_GROUP_SIZE)
+	//go processTags(pattern, _JAVA_TAG, &processingGroup)
+	//go processTags(pattern, _C_SHARP_TAG, &processingGroup)
+	//go processTags(pattern, _RUBY_TAG, &processingGroup)
+	//go processTags(pattern, _C_PLUS_TAG, &processingGroup)
+	processingGroup.Wait()
+
+}
+
+func processTags(pattern string, tag string, processingGroup *sync.WaitGroup) {
+	for currentPage := _START_PAGE; currentPage <= _PAGES_COUNT; currentPage++ {
+		apiUrl := getNextApiURL(pattern, currentPage, tag)
+		err := processUrl(apiUrl, tag)
 		if err != nil {
 			log.Printf("Skipped %s. Cause: %s", apiUrl, err)
 		}
 	}
+	processingGroup.Done()
 }
 
-func processUrl(apiUrl string) error {
+func processUrl(apiUrl, tag string) error {
+	log.Println("Start processing ---> " + apiUrl)
 	response, err := http.Get(apiUrl)
 	if err != nil {
 		return err
 	}
+	if strings.Compare(response.Status, _STATUS_OK) == 0 {
+		return errors.New("Response to " + apiUrl + " was crushed. STATUS = " + response.Status)
+	}
 	defer response.Body.Close()
 	var body []byte
-	response.Body.Read(body)
-	return processQuestionBatch(body)
+	body, err = ioutil.ReadAll(response.Body)
+	return processQuestionBatch(body, tag)
 }
 
-func processQuestionBatch(body []byte) error {
+func processQuestionBatch(body []byte, tag string) error {
 	data := &db.QuestionBatch{
 		Items: []db.Question{},
 	}
 	json.Unmarshal([]byte(body), &data)
 	for _, question := range data.Items {
 		question.Id = bson.NewObjectId()
-		err := connection.AddRecord(_SO_DATA_TYPE_QUESTIONS, question)
+		err := connection.AddRecord(_SO_DATA_TYPE_QUESTIONS+"_"+getTagId(tag), question)
 		if err != nil {
 			log.Fatalf("Error on Mongo AddRecord. Cause: %s", err)
 			waitGroup.Done()
@@ -103,109 +141,22 @@ func processQuestionBatch(body []byte) error {
 	return nil
 }
 
-func getNextApiURL(pattern string, currentPage int) string {
+func getNextApiURL(pattern string, currentPage int, tagsPieces ...string) string {
 	currentTimeMillis := util.GetCurrentTimeInMillis()
-	tags := util.ConcatTags(_JAVA_TAG)
-	return fmt.Sprintf(pattern, currentPage, _PAGE_SIZE, _FROM_DATE, currentTimeMillis, tags)
+	tags := strings.Join(tagsPieces, _TAG_CONCATENATOR)
+	return fmt.Sprintf(pattern, _STACKOVERFLOW_KEY, currentPage, _PAGE_SIZE, _FROM_DATE, currentTimeMillis, url.QueryEscape(tags), _SITE)
 }
 
-// ----------------
-//var tags []string
-//tags = append(tags, "aaa", "bbb", "ccc")
-//a := db.Question{
-//	Id: bson.NewObjectId(),
-//	Tags: tags,
-//	IsAnswered: true,
-//	ViewCount: 1,
-//	AcceptedAnswerId: 123,
-//	AnswerCount: 500,
-//	Score: 333,
-//	LastActivityDate: 1540644304,
-//	CreationDate: 1496221604,
-//	LastEditDate: 1496221605,
-//	QuestionId: 300,
-//	Link: "test link",
-//	Title: "Title",
-//
-//}
-//err := connection.AddRecord(_SO_DATA_TYPE_QUESTIONS, a)
-//if (err != nil) {
-//	log.Fatal(err)
-//	waitGroup.Done()
-//}
-// ----------
-
-/*
-batch := `{
-	"items": [
-	{
-	"tags": [
-	"java",
-	"apache-spark",
-	"apache-kafka",
-	"apache-spark-sql",
-	"spark-structured-streaming"
-	],
-	"owner": {
-	"reputation": 1385,
-	"user_id": 1870400,
-	"user_type": "registered",
-	"accept_rate": 42,
-	"profile_image": "https://www.gravatar.com/avatar/86a511ab70d0d94c77746a4d27c66fdf?s=128&d=identicon&r=PG",
-	"display_name": "user1870400",
-	"link": "https://stackoverflow.com/users/1870400/user1870400"
-	},
-	"is_answered": true,
-	"view_count": 774,
-	"accepted_answer_id": 44281045,
-	"answer_count": 1,
-	"score": 1,
-	"last_activity_date": 1540644304,
-	"creation_date": 1496221604,
-	"last_edit_date": 1540644304,
-	"question_id": 44280360,
-	"link": "https://stackoverflow.com/questions/44280360/how-to-convert-datasetrow-to-dataset-of-json-messages-to-write-to-kafka",
-	"title": "How to Convert DataSet&lt;Row&gt; to DataSet of JSON messages to write to Kafka?"
-	},
-	{
-	"tags": [
-	"c#",
-	"java",
-	"c++",
-	"memory",
-	"garbage-collection"
-	],
-	"owner": {
-	"reputation": 387,
-	"user_id": 343841,
-	"user_type": "registered",
-	"accept_rate": 100,
-	"profile_image": "https://www.gravatar.com/avatar/6e9a9f1fad9da5f9a79a99d67eb4fcdc?s=128&d=identicon&r=PG",
-	"display_name": "EmbeddedProg",
-	"link": "https://stackoverflow.com/users/343841/embeddedprog"
-	},
-	"is_answered": true,
-	"view_count": 1756,
-	"accepted_answer_id": 2983171,
-	"answer_count": 5,
-	"score": 19,
-	"last_activity_date": 1540644279,
-	"creation_date": 1275776267,
-	"question_id": 2982325,
-	"link": "https://stackoverflow.com/questions/2982325/quantifying-the-performance-of-garbage-collection-vs-explicit-memory-management",
-	"title": "Quantifying the Performance of Garbage Collection vs. Explicit Memory Management"
+func getTagId(tag string) string {
+	switch tag {
+	case _JAVA_TAG:
+		return "java"
+	case _RUBY_TAG:
+		return "ruby"
+	case _C_SHARP_TAG:
+		return "c_sharp"
+	case _C_PLUS_TAG:
+		return "c_plus"
 	}
-	]}`
-	data := &db.QuestionBatch{
-		Items: []db.Question{},
-	}
-	json.Unmarshal([]byte(batch), &data)
-	for _, question := range data.Items {
-		question.Id = bson.NewObjectId()
-		err := connection.AddRecord(_SO_DATA_TYPE_QUESTIONS, question)
-		if (err != nil) {
-			log.Fatalf("Error on Mongo AddRecord. Cause: %s", err)
-			waitGroup.Done()
-		}
-	}
-*/
+	return "undef"
+}
