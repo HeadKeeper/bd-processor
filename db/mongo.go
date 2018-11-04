@@ -46,3 +46,14 @@ func (connection *MongoConnection) Close() {
 		log.Printf("Connection %s was closed.", connection.url)
 	}
 }
+
+func (connection *MongoConnection) FindByQuery(collection string, query bson.M) (interface{}, error) {
+	var result interface{}
+	err := connection.session.DB(_DEFAULT_DATABASE).C(collection).Find(query).All(result)
+	return result, err
+}
+
+func (connection *MongoConnection) CountByQuery(collection string, query bson.M) (int, error) {
+	result, err := connection.session.DB(_DEFAULT_DATABASE).C(collection).Find(query).Count()
+	return result, err
+}

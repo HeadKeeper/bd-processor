@@ -44,9 +44,9 @@ const (
 // Parameters
 const (
 	_PAGE_SIZE   = 100
-	_PAGES_COUNT = 14756
+	_PAGES_COUNT = 12500
 	_FROM_DATE   = 1220227200
-	_START_PAGE  = 10501
+	_START_PAGE  = 1
 	_SITE        = "stackoverflow"
 	_JAVA_TAG    = "java"
 	_C_SHARP_TAG = "c#"
@@ -92,7 +92,7 @@ func fetchQuestions() {
 	var processingGroup sync.WaitGroup
 	processingGroup.Add(_PROCESSING_GROUP_SIZE)
 	//go processTags(pattern, _JAVA_TAG, &processingGroup)
-	//go processTags(pattern, _C_SHARP_TAG, &processingGroup)
+	go processTags(pattern, _C_SHARP_TAG, &processingGroup)
 	//go processTags(pattern, _RUBY_TAG, &processingGroup)
 	//go processTags(pattern, _C_PLUS_TAG, &processingGroup)
 	processingGroup.Wait()
@@ -132,7 +132,7 @@ func processQuestionBatch(body []byte, tag string) error {
 	json.Unmarshal([]byte(body), &data)
 	for _, question := range data.Items {
 		question.Id = bson.NewObjectId()
-		err := connection.AddRecord(_SO_DATA_TYPE_QUESTIONS+"_"+getTagId(tag), question)
+		err := connection.AddRecord(getCollectionName(tag), question)
 		if err != nil {
 			log.Fatalf("Error on Mongo AddRecord. Cause: %s", err)
 			waitGroup.Done()
