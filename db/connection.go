@@ -17,7 +17,7 @@ type DbConnection interface {
 	AddRecord(target string, record interface{}) error
 	ReplaceRecord(target string, record interface{}, id bson.ObjectId) error
 	DeleteRecord(target string, id bson.ObjectId) error
-	FindByQuery(collection string, query bson.M) (interface{}, error)
+	FindByQuery(collection string, query bson.M) (*QuestionBatch, error)
 	CountByQuery(collection string, query bson.M) (int, error)
 	Close()
 }

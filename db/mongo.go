@@ -47,9 +47,9 @@ func (connection *MongoConnection) Close() {
 	}
 }
 
-func (connection *MongoConnection) FindByQuery(collection string, query bson.M) (interface{}, error) {
-	var result interface{}
-	err := connection.session.DB(_DEFAULT_DATABASE).C(collection).Find(query).All(result)
+func (connection *MongoConnection) FindByQuery(collection string, query bson.M) (*QuestionBatch, error) {
+	result := new(QuestionBatch)
+	err := connection.session.DB(_DEFAULT_DATABASE).C(collection).Find(query).All(&result.Items)
 	return result, err
 }
 
