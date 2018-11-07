@@ -65,8 +65,10 @@ func collectPercentageByMonths(statistics *SO_Statistics, connection db.DbConnec
 		}
 		answered, err := connection.CountByQuery(collectionName, isAnsweredQuery)
 		notAnswered, err := connection.CountByQuery(collectionName, isNotAnsweredQuery)
-		if err == nil {
-			monthsStatistics[timeName] = (float64(answered) / (float64(notAnswered) + float64(answered)))
+		b := (float64(notAnswered) + float64(answered))
+		result := (float64(answered) / (float64(notAnswered) + float64(answered)))
+		if err == nil && b != 0 {
+			monthsStatistics[timeName] = result
 		} else {
 			monthsStatistics[timeName] = -1
 		}
@@ -101,8 +103,10 @@ func collectPercentageByYears(statistics *SO_Statistics, connection db.DbConnect
 		}
 		answered, err := connection.CountByQuery(collectionName, isAnsweredQuery)
 		notAnswered, err := connection.CountByQuery(collectionName, isNotAnsweredQuery)
-		if err == nil {
-			yearsStatistics[year] = (float64(answered) / (float64(notAnswered) + float64(answered)))
+		b := (float64(notAnswered) + float64(answered))
+		result := (float64(answered) / (float64(notAnswered) + float64(answered)))
+		if err == nil && b != 0 {
+			yearsStatistics[year] = result
 		} else {
 			yearsStatistics[year] = -1
 		}

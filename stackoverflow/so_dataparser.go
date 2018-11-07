@@ -2,7 +2,10 @@ package stackoverflow
 
 import (
 	"../db"
+	"encoding/json"
 	"gopkg.in/mgo.v2/bson"
+	"io/ioutil"
+	"log"
 	"sync"
 )
 
@@ -19,12 +22,18 @@ func ParseData(tag string, wg *sync.WaitGroup) error {
 	collectionName = getCollectionName(tag)
 
 	statistics := new(SO_Statistics)
+	statistics.Tag = tag
 	statistics.AnsweredPercent = getPercentage(connection, collectionName)
 	var parseGroup sync.WaitGroup
 	parseGroup.Add(2)
 	go parseCoTags(connection, collectionName, statistics, &parseGroup)
 	go parseTimeStatistics(connection, collectionName, statistics, &parseGroup)
 	parseGroup.Wait()
+	doc, err := json.Marshal(statistics)
+	ioutil.WriteFile(getCollectionName(tag)+".json", doc, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
 	wg.Done()
 	return nil
 }
