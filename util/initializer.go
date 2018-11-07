@@ -30,7 +30,7 @@ func InitializeYears() (years map[string]int64) {
 	years = make(map[string]int64)
 	yearsTimestamps := GetYearsTimestamp()
 	index := 0
-	for year := _START_YEAR; year <= _END_YEAR; year++ {
+	for year := _START_YEAR; year <= _END_YEAR+1; year++ {
 		key := strconv.Itoa(year)
 		years[key] = yearsTimestamps[index]
 		index++
@@ -39,7 +39,7 @@ func InitializeYears() (years map[string]int64) {
 }
 
 func GetYearsTimestamp() (timestamps []int64) {
-	for year := _START_YEAR; year <= _END_YEAR; year++ {
+	for year := _START_YEAR; year <= _END_YEAR+1; year++ {
 		unixTime := time.Date(year, _JANUARY_INDEX, 1, 0, 0, 0, 0, time.UTC).Unix()
 		timestamps = append(timestamps, unixTime)
 	}
