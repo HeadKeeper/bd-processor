@@ -20,22 +20,27 @@ func ParseData(tag string, wg *sync.WaitGroup) error {
 
 	statistics := new(SO_Statistics)
 	statistics.AnsweredPercent = getPercentage(connection, collectionName)
-	//parseCoTags(connection, collectionName, statistics)
-	parseTimeStatistics(connection, collectionName, statistics)
+	var parseGroup sync.WaitGroup
+	parseGroup.Add(2)
+	go parseCoTags(connection, collectionName, statistics, &parseGroup)
+	go parseTimeStatistics(connection, collectionName, statistics, &parseGroup)
+	parseGroup.Wait()
 	wg.Done()
 	return nil
 }
 
-func parseTimeStatistics(connection db.DbConnection, collectionName string, statistics *SO_Statistics) {
+func parseTimeStatistics(connection db.DbConnection, collectionName string, statistics *SO_Statistics, group *sync.WaitGroup) {
 	var parseGroup sync.WaitGroup
-	parseGroup.Add(1)
+	parseGroup.Add(4)
+	go collectQuestionsByMonths(statistics, connection, collectionName, &parseGroup)
 	go collectPercentageByMonths(statistics, connection, collectionName, &parseGroup)
-	//go collectPercentageByYears(statistics, connection, collectionName, &parseGroup)
-	//go collectQuestionsByYears(statistics, connection, collectionName, &parseGroup)
+	go collectPercentageByYears(statistics, connection, collectionName, &parseGroup)
+	go collectQuestionsByYears(statistics, connection, collectionName, &parseGroup)
 	parseGroup.Wait()
+	group.Done()
 }
 
-func parseCoTags(connection db.DbConnection, collectionName string, statistics *SO_Statistics) {
+func parseCoTags(connection db.DbConnection, collectionName string, statistics *SO_Statistics, group *sync.WaitGroup) {
 	questions, _ := connection.FindByQuery(collectionName, nil)
 	var parseGroup sync.WaitGroup
 	parseGroup.Add(4)
@@ -44,6 +49,7 @@ func parseCoTags(connection db.DbConnection, collectionName string, statistics *
 	go collectAnswersCountByCoTags(statistics, questions.Items, &parseGroup)
 	go collectTotalScoreByCoTag(statistics, questions.Items, &parseGroup)
 	parseGroup.Wait()
+	group.Done()
 }
 
 func getPercentage(connection db.DbConnection, collectionName string) float64 {

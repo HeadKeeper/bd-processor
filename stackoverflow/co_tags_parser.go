@@ -8,6 +8,7 @@ import (
 )
 
 func collectTotalScoreByCoTag(statistics *SO_Statistics, questions []db.Question, group *sync.WaitGroup) {
+	fmt.Println("Started 'collectTotalScoreByCoTag'...")
 	coTags := make(map[string]int)
 	for index, question := range questions {
 		fmt.Printf("CO-TAG (Total Score): #%d is started...\n", index)
@@ -21,6 +22,7 @@ func collectTotalScoreByCoTag(statistics *SO_Statistics, questions []db.Question
 }
 
 func collectAnswersCountByCoTags(statistics *SO_Statistics, questions []db.Question, group *sync.WaitGroup) {
+	fmt.Println("Started 'collectAnswersCountByCoTags'...")
 	coTags := make(map[string]int)
 	for index, question := range questions {
 		fmt.Printf("CO-TAG (Answers Count): #%d is started...\n", index)
@@ -34,6 +36,7 @@ func collectAnswersCountByCoTags(statistics *SO_Statistics, questions []db.Quest
 }
 
 func collectViewByCoTags(statistics *SO_Statistics, questions []db.Question, group *sync.WaitGroup) {
+	fmt.Println("Started 'collectViewByCoTags'...")
 	coTags := make(map[string]int)
 	for index, question := range questions {
 		fmt.Printf("CO-TAG (View Count): #%d is started...\n", index)
@@ -47,6 +50,7 @@ func collectViewByCoTags(statistics *SO_Statistics, questions []db.Question, gro
 }
 
 func collectCoTags(statistics *SO_Statistics, questions []db.Question, group *sync.WaitGroup) {
+	fmt.Println("Started 'collectCoTags'...")
 	coTags := make(map[string]int)
 	for index, question := range questions {
 		fmt.Printf("CO-TAG: #%d is started...\n", index)
