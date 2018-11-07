@@ -12,7 +12,7 @@ func main() {
 	log.Println("Starting data fetching...")
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(_WAIT_GROUP_SIZE)
-	go stackoverflow.ParseData("java", &waitGroup)
+	go stackoverflow.ParseData("c++", &waitGroup)
 	//go stackoverflow.StartFetching(&waitGroup)
 	//go github.StartFetching(&waitGroup)
 
