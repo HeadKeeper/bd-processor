@@ -29,7 +29,8 @@ func ParseData(tag string, wg *sync.WaitGroup) error {
 func parseTimeStatistics(connection db.DbConnection, collectionName string, statistics *SO_Statistics) {
 	var parseGroup sync.WaitGroup
 	parseGroup.Add(1)
-	go collectPercentageByYears(statistics, connection, collectionName, &parseGroup)
+	go collectPercentageByMonths(statistics, connection, collectionName, &parseGroup)
+	//go collectPercentageByYears(statistics, connection, collectionName, &parseGroup)
 	//go collectQuestionsByYears(statistics, connection, collectionName, &parseGroup)
 	parseGroup.Wait()
 }
